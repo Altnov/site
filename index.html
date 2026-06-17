@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>altnov • OSINT & GeoOSINT</title>
+  
+  <!-- Google Fonts: Orbitron + Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <style>
+    /* ========== CSS ПЕРЕМЕННЫЕ (ТЕМА) ========== */
+    :root {
+      --bg: #0A0C15;
+      --bg-alt: #161A25;
+      --text: #E2E8F0;
+      --text-muted: #94A3B8;
+      --accent-blue: #00F5C1;
+      --accent-purple: #6366F1;
+      --card-bg: rgba(15, 18, 28, 0.9);
+      --card-border: rgba(0, 245, 193, 0.15);
+      --nav-bg: rgba(11, 14, 20, 0.85);
+      --glow-blue: rgba(0, 245, 193, 0.5);
+      --glow-purple: rgba(99, 102, 241, 0.4);
+    }
+
+    body.light {
+      --bg: #F1F5F9;
+      --bg-alt: #E2E8F0;
+      --text: #1E2937;
+      --text-muted: #475569;
+      --card-bg: rgba(255, 255, 255, 0.92);
+      --card-border: rgba(0, 245, 193, 0.25);
+      --nav-bg: rgba(248, 250, 252, 0.85);
+      --glow-blue: rgba(0, 200, 170, 0.35);
+      --glow-purple: rgba(99, 102, 241, 0.3);
+    }
+
+    /* ========== БАЗОВЫЕ СТИЛИ ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', system_ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background 0.8s cubic-bezier(0.4, 0.0, 0.2, 1),
+                  color 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    /* Кастомный скроллбар */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-alt);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--accent-blue);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-purple);
+    }
+
+    /* ========== ФОН И ГЕКСАГОНЫ ========== */
+    .background {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
+      transition: background 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    /* Canvas для гексагонов и частиц */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    body.light #bg-canvas {
+      mix-blend-mode: multiply;
+    }
+
+    /* Плавающие точки (дополнительно через CSS для легкости) */
+    .floating-dots {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* ========== ШАПКА ========== */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: var(--nav-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      transition: background 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: 1px;
+    }
+
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .logo-icon svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 6px var(--accent-blue));
+    }
+
+    .logo:hover .logo-icon svg {
+      filter: drop-shadow(0 0 12px var(--accent-blue));
+    }
+
+    .logo-text {
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px var(--glow-blue);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      position: relative;
+      padding: 10px 18px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      transition: color 0.3s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent-blue);
+    }
+
+    .nav-links a.active {
+      color: var(--accent-blue);
+    }
+
+    .nav-links a.active::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 26px;
+      height: 2px;
+      background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+      border-radius: 2px;
+      box-shadow: 0 0 10px var(--glow-blue);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-toggle {
+      width: 44px;
+      height: 44px;
+      border: none;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 50%;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1),
+                  background 0.3s ease,
+                  box-shadow 0.3s ease;
+      position: relative;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .theme-toggle:active {
+      transform: scale(0.92);
+    }
+
+    .theme-toggle.pulse-once {
+      animation: theme-pulse 2s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    @keyframes theme-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 245, 193, 0.0); }
+      20% { box-shadow: 0 0 0 16px rgba(0, 245, 193, 0.15); }
+      60% { box-shadow: 0 0 0 24px rgba(0, 245, 193, 0.0); }
+    }
+
+    /* Бургер меню */
+    .burger {
+      display: none;
+      width: 44px;
+      height: 44px;
+      border: none;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 1.25rem;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Мобильное меню */
+    .mobile-menu {
+      position: fixed;
+      top: 72px;
+      right: -100%;
+      width: 260px;
+      height: calc(100vh - 72px);
+      background: var(--nav-bg);
+      backdrop-filter: blur(16px);
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 99;
+      transition: right 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mobile-menu.open {
+      right: 0;
+    }
+
+    .mobile-menu a {
+      padding: 14px 16px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .mobile-menu a.active,
+    .mobile-menu a:hover {
+      background: rgba(0, 245, 193, 0.08);
+      color: var(--accent-blue);
+    }
+
+    /* ========== ОСНОВНОЙ КОНТЕЙНЕР И СТРАНИЦЫ ========== */
+    main {
+      padding-top: 72px;
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.65s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    .page.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* ========== HERO (ГЛАВНАЯ) ========== */
+    .hero {
+      text-align: center;
+      padding: 80px 0 40px;
+      min-height: 440px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .hero-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 4.5rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+      line-height: 1.05;
+      background: linear-gradient(90deg, var(--text) 20%, var(--accent-blue) 50%, var(--text) 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 20px var(--glow-blue));
+    }
+
+    .hero-subtitle {
+      font-size: 1.45rem;
+      font-weight: 500;
+      color: var(--accent-blue);
+      margin-bottom: 28px;
+      min-height: 2.2rem;
+    }
+
+    .ticker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      padding: 8px 20px;
+      background: rgba(0, 245, 193, 0.08);
+      border: 1px solid rgba(0, 245, 193, 0.2);
+      border-radius: 50px;
+      color: var(--accent-blue);
+      font-weight: 500;
+      margin: 0 auto;
+    }
+
+    .ticker .cursor {
+      animation: blink 1s step-end infinite;
+      font-weight: 300;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    /* Каскадное появление */
+    .hero .fade-item {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.9s cubic-bezier(0.23, 1.0, 0.32, 1) forwards;
+    }
+
+    .hero .fade-item:nth-child(2) { animation-delay: 0.15s; }
+    .hero .fade-item:nth-child(3) { animation-delay: 0.3s; }
+    .hero .fade-item:nth-child(4) { animation-delay: 0.45s; }
+
+    @keyframes fadeUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ========== КАРТОЧКИ КОНТАКТОВ ========== */
+    .contacts {
+      display: flex;
+      gap: 20px;
+      margin: 50px 0 70px;
+      justify-content: center;
+    }
+
+    .contact-card {
+      flex: 1;
+      max-width: 280px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px 22px;
+      text-align: center;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+                  box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+                  border-color 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .contact-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 45px -12px rgba(0, 0, 0, 0.3),
+                  0 0 0 1px var(--accent-blue),
+                  0 0 25px var(--glow-blue);
+      border-color: var(--accent-blue);
+    }
+
+    .contact-card .icon {
+      font-size: 2.1rem;
+      margin-bottom: 14px;
+      color: var(--accent-blue);
+      transition: transform 0.3s ease;
+    }
+
+    .contact-card:hover .icon {
+      transform: scale(1.1);
+    }
+
+    .contact-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .contact-card p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* ========== СЕКЦИЯ "ЧЕМ Я ЗАНИМАЮСЬ" ========== */
+    .section-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 600;
+      margin-bottom: 28px;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+
+    .activities {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .activity-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 32px 28px;
+      transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1),
+                  box-shadow 0.5s ease,
+                  border-color 0.3s ease;
+    }
+
+    .activity-card.left {
+      opacity: 0;
+      transform: translateX(-50px);
+    }
+    .activity-card.right {
+      opacity: 0;
+      transform: translateX(50px);
+    }
+    .activity-card.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .activity-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent-purple);
+      box-shadow: 0 15px 35px -15px rgba(99, 102, 241, 0.3);
+    }
+
+    .activity-card .icon-wrapper {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(0,245,193,0.15), rgba(99,102,241,0.15));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      font-size: 1.85rem;
+      color: var(--accent-blue);
+    }
+
+    .activity-card h3 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .activity-card p {
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ========== ИНСТРУМЕНТЫ OSINT ========== */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      margin-top: 20px;
+    }
+
+    .tool-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px 22px;
+      transition: transform 0.45s cubic-bezier(0.23, 1, 0.32, 1),
+                  box-shadow 0.45s ease,
+                  border-color 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tool-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35),
+                  0 0 0 1px var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    .tool-card .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .tool-card .icon {
+      font-size: 2rem;
+      color: var(--accent-purple);
+    }
+
+    .tool-card .gear {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      transition: transform 0.3s ease;
+      opacity: 0.7;
+    }
+
+    .tool-card:hover .gear {
+      animation: gear-spin 1.8s linear infinite;
+      color: var(--accent-blue);
+    }
+
+    @keyframes gear-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .tool-card h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .tool-card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .tool-card .stagger {
+      opacity: 0;
+      transform: translateY(25px);
+    }
+
+    .tool-card.visible .stagger {
+      animation: fadeSlide 0.75s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    }
+
+    @keyframes fadeSlide {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ========== СТРАНИЦА ОБО МНЕ ========== */
+    .about-header {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      margin-bottom: 42px;
+    }
+
+    .avatar {
+      width: 128px;
+      height: 128px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3.25rem;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 0 0 8px rgba(0, 245, 193, 0.15),
+                  0 0 40px var(--glow-blue);
+      flex-shrink: 0;
+    }
+
+    .about-info h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.25rem;
+      margin-bottom: 6px;
+    }
+
+    .about-info .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 1.05rem;
+      color: var(--text-muted);
+    }
+
+    .about-info .meta strong {
+      color: var(--accent-blue);
+    }
+
+    .about-info .specialization {
+      margin-top: 8px;
+      display: inline-block;
+      font-size: 0.95rem;
+      padding: 3px 14px;
+      background: rgba(0, 245, 193, 0.1);
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      border-radius: 20px;
+    }
+
+    .specs-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 18px;
+      margin-bottom: 50px;
+    }
+
+    .spec-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px 18px;
+      transition: box-shadow 0.4s ease, transform 0.3s ease;
+    }
+
+    .spec-card:hover {
+      box-shadow: 0 0 0 1px var(--accent-blue),
+                  0 15px 35px -10px rgba(0, 245, 193, 0.25);
+      animation: spec-pulse 1.4s ease;
+    }
+
+    @keyframes spec-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.015); }
+    }
+
+    .spec-card .icon {
+      font-size: 1.5rem;
+      color: var(--accent-purple);
+      margin-bottom: 12px;
+    }
+
+    .spec-card .label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .spec-card .value {
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .spec-card .extra {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .facts {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 36px 38px;
+      margin-top: 10px;
+    }
+
+    .facts h3 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.35rem;
+      margin-bottom: 18px;
+    }
+
+    .interests {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .tag {
+      font-size: 0.875rem;
+      padding: 6px 16px;
+      background: rgba(0, 245, 193, 0.08);
+      border: 1px solid rgba(0, 245, 193, 0.25);
+      border-radius: 9999px;
+      color: var(--accent-blue);
+      font-weight: 500;
+    }
+
+    .quote {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.3rem;
+      line-height: 1.45;
+      font-style: italic;
+      color: var(--accent-purple);
+      border-left: 4px solid var(--accent-purple);
+      padding-left: 22px;
+      margin-top: 12px;
+    }
+
+    /* ========== ФУТЕР ========== */
+    footer {
+      text-align: center;
+      padding: 40px 24px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    /* ========== АДАПТИВНОСТЬ ========== */
+    @media (max-width: 1024px) {
+      .tools-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .specs-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+      .burger {
+        display: flex;
+      }
+      .contacts {
+        flex-direction: column;
+        align-items: center;
+      }
+      .contact-card {
+        max-width: 100%;
+        width: 100%;
+      }
+      .hero-name {
+        font-size: 3.1rem;
+      }
+      .hero-subtitle {
+        font-size: 1.15rem;
+      }
+      .activities {
+        grid-template-columns: 1fr;
+      }
+      .tools-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .about-header {
+        flex-direction: column;
+        text-align: center;
+      }
+      .avatar {
+        width: 108px;
+        height: 108px;
+        font-size: 2.75rem;
+      }
+      .specs-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .hero {
+        padding: 50px 0 30px;
+        min-height: 340px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .tools-grid {
+        grid-template-columns: 1fr;
+      }
+      .specs-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Скрытие при переключении страниц */
+    .page {
+      min-height: 520px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Фон -->
+  <div class="background"></div>
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- ШАПКА -->
+  <header>
+    <div class="nav-container">
+      <!-- Логотип -->
+      <a href="#" class="logo" onclick="switchPage('page-home'); return false;">
+        <div class="logo-icon">
+          <!-- Иконка глаза / спутника -->
+          <svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="19" cy="19" r="15" stroke="url(#grad)" stroke-width="2.5"/>
+            <circle cx="19" cy="19" r="6.5" fill="currentColor"/>
+            <circle cx="19" cy="19" r="3" fill="#0B0E14"/>
+            <defs>
+              <linearGradient id="grad" x1="5" y1="5" x2="33" y2="33" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#00F5C1"/>
+                <stop offset="1" stop-color="#6366F1"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span class="logo-text">ALTNOV</span>
+      </a>
+
+      <!-- Десктопное меню -->
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#" data-page="page-home" class="nav-link active" onclick="switchPage('page-home'); return false;">Главная</a></li>
+          <li><a href="#" data-page="page-tools" class="nav-link" onclick="switchPage('page-tools'); return false;">Инструменты</a></li>
+          <li><a href="#" data-page="page-about" class="nav-link" onclick="switchPage('page-about'); return false;">Обо мне</a></li>
+        </ul>
+      </nav>
+
+      <!-- Действия справа -->
+      <div class="nav-actions">
+        <!-- Переключатель темы -->
+        <button id="theme-toggle" class="theme-toggle" aria-label="Переключить тему">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+
+        <!-- Бургер -->
+        <button id="burger" class="burger" aria-label="Открыть меню">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Мобильное меню -->
+    <div id="mobile-menu" class="mobile-menu">
+      <a href="#" data-page="page-home" onclick="switchPage('page-home'); closeMobileMenu(); return false;">Главная</a>
+      <a href="#" data-page="page-tools" onclick="switchPage('page-tools'); closeMobileMenu(); return false;">Инструменты</a>
+      <a href="#" data-page="page-about" onclick="switchPage('page-about'); closeMobileMenu(); return false;">Обо мне</a>
+    </div>
+  </header>
+
+  <!-- ОСНОВНОЙ КОНТЕНТ -->
+  <main>
+    <!-- ГЛАВНАЯ СТРАНИЦА -->
+    <section id="page-home" class="page active">
+      <!-- Hero -->
+      <div class="hero">
+        <h1 class="hero-name fade-item">altnov</h1>
+        <div class="hero-subtitle fade-item" id="subtitle"></div>
+        
+        <div class="ticker fade-item">
+          <span>📍 Система онлайн • Отслеживание геоданных активен</span>
+          <span class="cursor">|</span>
+        </div>
+      </div>
+
+      <!-- Контакты -->
+      <div class="contacts">
+        <a href="tg://resolve?domain=altnov" class="contact-card" target="_blank" rel="noopener noreferrer">
+          <div class="icon"><i class="fa-solid fa-paper-plane"></i></div>
+          <h3>@altnov</h3>
+          <p>Написать лично</p>
+        </a>
+        <a href="https://t.me/AltChannels" class="contact-card" target="_blank" rel="noopener noreferrer">
+          <div class="icon"><i class="fa-solid fa-bullhorn"></i></div>
+          <h3>Канал</h3>
+          <p>Мой блог об OSINT</p>
+        </a>
+        <a href="https://t.me/+dxnZvudYxww4MjE6" class="contact-card" target="_blank" rel="noopener noreferrer">
+          <div class="icon"><i class="fa-solid fa-users"></i></div>
+          <h3>Группа</h3>
+          <p>Сообщество</p>
+        </a>
+      </div>
+
+      <!-- Чем я занимаюсь -->
+      <h2 class="section-title">Чем я занимаюсь</h2>
+      <div class="activities">
+        <div class="activity-card left">
+          <div class="icon-wrapper"><i class="fa-solid fa-search"></i></div>
+          <h3>OSINT</h3>
+          <p>Сбор и глубокий анализ данных из открытых источников. Выявление связей, профилирование и разведка.</p>
+        </div>
+        <div class="activity-card right">
+          <div class="icon-wrapper"><i class="fa-solid fa-globe"></i></div>
+          <h3>GeoOSINT</h3>
+          <p>Геолокация объектов, анализ спутниковых снимков, работа с геопространственными данными и картами.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- СТРАНИЦА ИНСТРУМЕНТОВ -->
+    <section id="page-tools" class="page">
+      <h2 class="section-title">Инструменты OSINT</h2>
+      <p style="text-align: center; color: var(--text-muted); margin-bottom: 32px; max-width: 580px; margin-left: auto; margin-right: auto;">
+        Набор проверенных инструментов, которыми я регулярно пользуюсь для сбора и анализа информации.
+      </p>
+
+      <div class="tools-grid">
+        <!-- Shodan -->
+        <div class="tool-card" style="animation-delay: 0ms;">
+          <div class="header">
+            <div class="icon"><i class="fa-solid fa-satellite"></i></div>
+            <div class="gear"><i class="fa-solid fa-cog"></i></div>
+          </div>
+          <h3>Shodan</h3>
+          <p class="stagger">Поиск устройств и сервисов, подключённых к интернету. Идеален для поиска уязвимостей.</p>
+        </div>
+
+        <!-- Maltego -->
+        <div class="tool-card" style="animation-delay: 100ms;">
+          <div class="header">
+            <div class="icon"><i class="fa-solid fa-project-diagram"></i></div>
+            <div class="gear"><i class="fa-solid fa-cog"></i></div>
+          </div>
+          <h3>Maltego</h3>
+          <p class="stagger">Визуализация связей между людьми, организациями и инфраструктурой.</p>
+        </div>
+
+        <!-- Google Earth Pro -->
+        <div class="tool-card" style="animation-delay: 200ms;">
+          <div class="header">
+            <div class="icon"><i class="fa-solid fa-map-marked-alt"></i></div>
+            <div class="gear"><i class="fa-solid fa-cog"></i></div>
+          </div>
+          <h3>Google Earth Pro</h3>
+          <p class="stagger">Профессиональный анализ геоданных, работа с 3D-моделями местности и временными слоями.</p>
+        </div>
+
+        <!-- Recon-ng -->
+        <div class="tool-card" style="animation-delay: 300ms;">
+          <div class="header">
+            <div class="icon"><i class="fa-solid fa-terminal"></i></div>
+            <div class="gear"><i class="fa-solid fa-cog"></i></div>
+          </div>
+          <h3>Recon-ng</h3>
+          <p class="stagger">Модульный фреймворк для автоматизированной разведки и сбора информации.</p>
+        </div>
+
+        <!-- TheHarvester -->
+        <div class="tool-card" style="animation-delay: 400ms;">
+          <div class="header">
+            <div class="icon"><i class="fa-solid fa-envelope"></i></div>
+            <div class="gear"><i class="fa-solid fa-cog"></i></div>
+          </div>
+          <h3>TheHarvester</h3>
+          <p class="stagger">Сбор email-адресов, доменов, поддоменов и публичной информации о целях.</p>
+        </div>
+
+        <!-- SpiderFoot -->
+        <div class="tool-card" style="animation-delay: 500ms;">
+          <div class="header">
+            <div class="icon"><i class="fa-solid fa-spider"></i></div>
+            <div class="gear"><i class="fa-solid fa-cog"></i></div>
+          </div>
+          <h3>SpiderFoot</h3>
+          <p class="stagger">Автоматизированный сканер для глубокого OSINT-исследования доменов и инфраструктуры.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- СТРАНИЦА ОБО МНЕ -->
+    <section id="page-about" class="page">
+      <!-- Личная информация -->
+      <div class="about-header">
+        <div class="avatar">AL</div>
+        <div class="about-info">
+          <h1>Альтнов (Altnov)</h1>
+          <div class="meta">
+            <span><strong>17 лет</strong></span>
+            <span>Занимаюсь OSINT с <strong>2016 года</strong></span>
+          </div>
+          <div class="specialization">OSINT • GeoOSINT</div>
+        </div>
+      </div>
+
+      <!-- Технические характеристики -->
+      <h2 class="section-title" style="text-align: left; margin-bottom: 18px;">Технические характеристики</h2>
+      <div class="specs-grid">
+        <div class="spec-card">
+          <div class="icon"><i class="fa-solid fa-microchip"></i></div>
+          <div class="label">Процессор</div>
+          <div class="value">AMD Ryzen 7 5800X</div>
+          <div class="extra">8 ядер / 16 потоков</div>
+        </div>
+        <div class="spec-card">
+          <div class="icon"><i class="fa-solid fa-memory"></i></div>
+          <div class="label">Память</div>
+          <div class="value">32 ГБ DDR4</div>
+          <div class="extra">3200 МГц, CL16</div>
+        </div>
+        <div class="spec-card">
+          <div class="icon"><i class="fa-solid fa-tv"></i></div>
+          <div class="label">Видеокарта</div>
+          <div class="value">NVIDIA GeForce RTX 3060</div>
+          <div class="extra">12 ГБ GDDR6</div>
+        </div>
+        <div class="spec-card">
+          <div class="icon"><i class="fa-solid fa-hdd"></i></div>
+          <div class="label">Накопитель</div>
+          <div class="value">NVMe SSD 1 ТБ</div>
+          <div class="extra">PCIe 4.0</div>
+        </div>
+        <div class="spec-card">
+          <div class="icon"><i class="fa-brands fa-linux"></i></div>
+          <div class="label">Операционная система</div>
+          <div class="value">Linux</div>
+          <div class="extra">Дистрибутив: [твой выбор]</div>
+        </div>
+      </div>
+
+      <!-- Дополнительные факты -->
+      <div class="facts">
+        <h3>Интересы и навыки</h3>
+        
+        <div class="interests">
+          <div class="tag">Кибербезопасность</div>
+          <div class="tag">Геополитика</div>
+          <div class="tag">Картография</div>
+          <div class="tag">Python</div>
+          <div class="tag">Bash</div>
+        </div>
+
+        <div class="quote">
+          «Каждая точка на карте хранит историю»
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    © 2026 altnov • OSINT &amp; GeoOSINT Researcher
+  </footer>
+
+  <script>
+    // ==========================================
+    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+    // ==========================================
+
+    // Переключение между страницами с плавным затемнением
+    let currentPage = 'page-home';
+
+    function switchPage(targetId) {
+      if (targetId === currentPage) return;
+
+      const current = document.getElementById(currentPage);
+      const next = document.getElementById(targetId);
+
+      if (!current || !next) return;
+
+      // Анимация исчезновения текущей страницы
+      current.style.transition = 'opacity 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)';
+      current.style.opacity = '0';
+
+      // Создаём лёгкий эффект частиц при переключении
+      createTransitionParticles();
+
+      setTimeout(() => {
+        current.classList.remove('active');
+        current.style.opacity = '1';
+        current.style.transition = '';
+
+        // Показываем новую
+        next.style.opacity = '0';
+        next.classList.add('active');
+        
+        // Триггер перерисовки
+        void next.offsetWidth;
+
+        next.style.transition = 'opacity 0.75s cubic-bezier(0.4, 0.0, 0.2, 1)';
+        next.style.opacity = '1';
+
+        currentPage = targetId;
+
+        // Обновляем активную ссылку в меню
+        updateActiveNav();
+
+        // Сбрасываем анимации скролла при возврате на страницу
+        setTimeout(() => {
+          triggerScrollAnimations(targetId);
+        }, 120);
+      }, 580);
+    }
+
+    function updateActiveNav() {
+      // Десктоп
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.page === currentPage) {
+          link.classList.add('active');
+        }
+      });
+
+      // Мобильное
+      document.querySelectorAll('#mobile-menu a').forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.page === currentPage) {
+          link.classList.add('active');
+        }
+      });
+    }
+
+    // Мобильное меню
+    function closeMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.remove('open');
+    }
+
+    // ==========================================
+    // ТЕМА (ТЁМНАЯ / СВЕТЛАЯ)
+    // ==========================================
+    let themePulseTriggered = false;
+
+    function initTheme() {
+      const saved = localStorage.getItem('theme');
+      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      
+      if (saved === 'light' || (!saved && prefersLight)) {
+        document.body.classList.add('light');
+        updateThemeIcon(true);
+      } else {
+        updateThemeIcon(false);
+      }
+
+      const toggle = document.getElementById('theme-toggle');
+      toggle.addEventListener('click', () => {
+        const isLight = document.body.classList.toggle('light');
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        
+        // Вращение иконки
+        toggle.style.transition = 'transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1)';
+        toggle.style.transform = 'rotate(360deg)';
+        
+        setTimeout(() => {
+          toggle.style.transition = 'transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1), background 0.3s ease';
+          toggle.style.transform = '';
+        }, 650);
+
+        updateThemeIcon(isLight);
+        
+        // Обновляем цвета частиц
+        setTimeout(() => {
+          if (window.updateParticlesTheme) window.updateParticlesTheme();
+        }, 40);
+      });
+
+      // Однократный pulse при скролле
+      let scrollHandler = () => {
+        if (!themePulseTriggered && window.scrollY > 100) {
+          themePulseTriggered = true;
+          toggle.classList.add('pulse-once');
+          setTimeout(() => {
+            toggle.classList.remove('pulse-once');
+          }, 2100);
+          window.removeEventListener('scroll', scrollHandler);
+        }
+      };
+      window.addEventListener('scroll', scrollHandler, { passive: true });
+    }
+
+    function updateThemeIcon(isLight) {
+      const icon = document.querySelector('#theme-toggle i');
+      if (isLight) {
+        icon.classList.remove('fa-moon');
+        icon.classList.add('fa-sun');
+      } else {
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+      }
+    }
+
+    // ==========================================
+    // ЭФФЕКТ ПЕЧАТНОЙ МАШИНКИ + ПОБУКВЕННОЕ ПОЯВЛЕНИЕ
+    // ==========================================
+    function initHeroAnimations() {
+      // Typewriter для имени уже статичный (градиент), делаем акцент на subtitle
+
+      const subtitleEl = document.getElementById('subtitle');
+      const text = 'OSINT & GeoOSINT Researcher';
+      
+      // Побуквенное появление
+      subtitleEl.innerHTML = '';
+      const letters = text.split('');
+      
+      letters.forEach((letter, index) => {
+        const span = document.createElement('span');
+        span.textContent = letter;
+        span.style.opacity = '0';
+        span.style.display = 'inline-block';
+        span.style.transition = `opacity 0.35s cubic-bezier(0.4, 0.0, 0.2, 1) ${index * 42}ms`;
+        subtitleEl.appendChild(span);
+      });
+
+      // Запускаем появление после загрузки
+      setTimeout(() => {
+        subtitleEl.querySelectorAll('span').forEach(span => {
+          span.style.opacity = '1';
+        });
+      }, 420);
+    }
+
+    // ==========================================
+    // CANVAS: ГЕКСАГОНЫ + ПАРЯЩИЕ ТОЧКИ + ПАУТИНА
+    // ==========================================
+    let canvas, ctx;
+    let particles = [];
+    let mouse = { x: null, y: null, active: false };
+    let hexAngle = 0;
+    let isLightTheme = false;
+
+    const PARTICLE_COUNT = 52;
+
+    function initBackgroundCanvas() {
+      canvas = document.getElementById('bg-canvas');
+      ctx = canvas.getContext('2d', { alpha: true });
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      initParticles();
+
+      // Мышь
+      const handleMouseMove = (e) => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+        mouse.active = true;
+      };
+      const handleMouseLeave = () => {
+        mouse.active = false;
+        mouse.x = null;
+        mouse.y = null;
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseleave', handleMouseLeave);
+
+      // Клик даёт импульс частицам
+      canvas.addEventListener('click', (e) => {
+        for (let p of particles) {
+          const dx = p.x - e.clientX;
+          const dy = p.y - e.clientY;
+          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          if (dist < 280) {
+            p.vx += (dx / dist) * 1.8;
+            p.vy += (dy / dist) * 1.8;
+          }
+        }
+      });
+
+      // Запуск анимации
+      animateBackground();
+
+      // Функция для внешнего обновления темы
+      window.updateParticlesTheme = () => {
+        isLightTheme = document.body.classList.contains('light');
+      };
+      isLightTheme = document.body.classList.contains('light');
+    }
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function initParticles() {
+      particles = [];
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
+          vx: (Math.random() - 0.5) * 0.32,
+          vy: (Math.random() - 0.5) * 0.32,
+          size: Math.random() * 2.6 + 1.3,
+          alpha: Math.random() * 0.55 + 0.35,
+          flickerSpeed: Math.random() * 0.04 + 0.015,
+          flickerPhase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    function getParticleColor() {
+      return isLightTheme ? '140, 145, 155' : '0, 245, 193';
+    }
+
+    function drawHexGrid() {
+      if (!ctx) return;
+
+      const w = canvas.width;
+      const h = canvas.height;
+      const size = 58;
+      const spacingX = size * 1.65;
+      const spacingY = size * 1.42;
+
+      ctx.save();
+      ctx.strokeStyle = isLightTheme 
+        ? 'rgba(120, 130, 145, 0.14)' 
+        : 'rgba(0, 245, 193, 0.09)';
+      ctx.lineWidth = 1.1;
+
+      // Центр вращения
+      const cx = w / 2;
+      const cy = h / 2 + 40;
+
+      ctx.translate(cx, cy);
+      ctx.rotate(hexAngle);
+
+      const cols = Math.ceil(w / spacingX) + 4;
+      const rows = Math.ceil(h / spacingY) + 3;
+
+      for (let row = -2; row < rows; row++) {
+        for (let col = -2; col < cols; col++) {
+          const offsetX = (row % 2 === 0) ? 0 : spacingX * 0.5;
+          const x = (col * spacingX) - (spacingX * 1.8) + offsetX;
+          const y = row * spacingY * 0.866 - (spacingY * 1.4);
+
+          drawHexagon(x, y, size);
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function drawHexagon(x, y, size) {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i;
+        const px = x + size * Math.cos(angle);
+        const py = y + size * Math.sin(angle);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    function updateAndDrawParticles() {
+      if (!ctx) return;
+
+      const color = getParticleColor();
+      const w = canvas.width;
+      const h = canvas.height;
+
+      for (let p of particles) {
+        // Движение
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Лёгкий случайный джиттер
+        p.vx += (Math.random() - 0.5) * 0.015;
+        p.vy += (Math.random() - 0.5) * 0.015;
+
+        // Плавное замедление
+        p.vx *= 0.982;
+        p.vy *= 0.982;
+
+        // Ограничение скорости
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (speed > 1.15) {
+          p.vx = (p.vx / speed) * 1.15;
+          p.vy = (p.vy / speed) * 1.15;
+        }
+
+        // Заворачивание по краям
+        if (p.x < 0) p.x = w;
+        if (p.x > w) p.x = 0;
+        if (p.y < 0) p.y = h;
+        if (p.y > h) p.y = 0;
+
+        // Мерцание
+        p.flickerPhase += p.flickerSpeed;
+        const flicker = Math.sin(p.flickerPhase) * 0.28 + 0.72;
+        const finalAlpha = Math.max(0.15, p.alpha * flicker);
+
+        // Взаимодействие с мышью
+        if (mouse.active && mouse.x !== null) {
+          const dx = mouse.x - p.x;
+          const dy = mouse.y - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 200 && dist > 0) {
+            const force = (200 - dist) / 200 * 0.08;
+            p.vx += (dx / dist) * force;
+            p.vy += (dy / dist) * force;
+          }
+        }
+      }
+
+      // Отрисовка соединительных линий (паутина)
+      ctx.strokeStyle = isLightTheme 
+        ? 'rgba(100, 105, 115, 0.11)' 
+        : 'rgba(0, 245, 193, 0.11)';
+      ctx.lineWidth = 0.8;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 132) {
+            const alpha = (1 - dist / 132) * 0.65;
+            ctx.globalAlpha = alpha;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Линии к курсору
+      if (mouse.active && mouse.x !== null) {
+        ctx.strokeStyle = isLightTheme 
+          ? 'rgba(110, 115, 130, 0.16)' 
+          : 'rgba(0, 245, 193, 0.18)';
+        ctx.lineWidth = 1;
+
+        for (let p of particles) {
+          const dx = mouse.x - p.x;
+          const dy = mouse.y - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 185) {
+            ctx.globalAlpha = (1 - dist / 185) * 0.7;
+            ctx.beginPath();
+            ctx.moveTo(mouse.x, mouse.y);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Отрисовка самих частиц
+      ctx.lineWidth = 1;
+      for (let p of particles) {
+        ctx.globalAlpha = p.alpha;
+        
+        // Свечение
+        ctx.shadowColor = isLightTheme ? `rgba(120,125,140,0.4)` : `rgba(${color}, 0.75)`;
+        ctx.shadowBlur = isLightTheme ? 4 : 9;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = isLightTheme ? `rgba(95, 100, 115, ${p.alpha})` : `rgba(${color}, ${p.alpha})`;
+        ctx.fill();
+
+        // Яркая сердцевина
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 0.42, 0, Math.PI * 2);
+        ctx.fillStyle = isLightTheme ? `rgba(210, 215, 225, ${p.alpha * 0.9})` : `rgba(255, 255, 255, ${p.alpha})`;
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+    }
+
+    function animateBackground() {
+      if (!ctx || !canvas) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Медленное вращение гексагональной сетки
+      hexAngle += 0.00034; // ~60 сек на оборот
+
+      drawHexGrid();
+      updateAndDrawParticles();
+
+      requestAnimationFrame(animateBackground);
+    }
+
+    // Частицы при переключении страниц (звёздочки)
+    function createTransitionParticles() {
+      if (!ctx || !canvas) return;
+
+      const burstX = window.innerWidth * 0.5;
+      const burstY = Math.max(110, window.innerHeight * 0.38);
+
+      for (let i = 0; i < 28; i++) {
+        const angle = (Math.random() * Math.PI * 2);
+        const speed = Math.random() * 2.6 + 1.1;
+        
+        particles.push({
+          x: burstX,
+          y: burstY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed * 0.75 - 0.6,
+          size: Math.random() * 2.3 + 1.5,
+          alpha: 0.95,
+          flickerSpeed: 0.065,
+          flickerPhase: Math.random() * Math.PI * 2,
+          // временный флаг для удаления
+          life: 1
+        });
+      }
+
+      // Удаляем лишние временные частицы через 1.8 сек
+      setTimeout(() => {
+        if (particles.length > PARTICLE_COUNT + 10) {
+          particles = particles.slice(-PARTICLE_COUNT);
+        }
+      }, 1800);
+    }
+
+    // ==========================================
+    // АНИМАЦИИ ПРИ СКРОЛЛЕ (IntersectionObserver)
+    // ==========================================
+    function initScrollAnimations() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const el = entry.target;
+
+            // Для карточек активностей
+            if (el.classList.contains('activity-card')) {
+              el.classList.add('visible');
+            }
+
+            // Для карточек инструментов — ступенчатое появление
+            if (el.classList.contains('tool-card')) {
+              el.classList.add('visible');
+              const stagger = el.querySelector('.stagger');
+              if (stagger) {
+                stagger.style.transitionDelay = (parseFloat(el.style.animationDelay) || 0) + 'ms';
+              }
+            }
+
+            observer.unobserve(el);
+          }
+        });
+      }, { threshold: 0.22 });
+
+      // Наблюдаем за элементами
+      document.querySelectorAll('.activity-card').forEach(el => observer.observe(el));
+      document.querySelectorAll('.tool-card').forEach(el => observer.observe(el));
+    }
+
+    // Принудительный запуск анимаций для текущей страницы
+    function triggerScrollAnimations(pageId) {
+      const page = document.getElementById(pageId);
+      if (!page) return;
+
+      // Активности
+      page.querySelectorAll('.activity-card').forEach((card, i) => {
+        card.classList.remove('visible');
+        setTimeout(() => {
+          card.classList.add('visible');
+        }, 60 + i * 110);
+      });
+
+      // Инструменты — с задержкой
+      page.querySelectorAll('.tool-card').forEach((card, i) => {
+        card.classList.remove('visible');
+        setTimeout(() => {
+          card.classList.add('visible');
+        }, 90 + i * 80);
+      });
+    }
+
+    // ==========================================
+    // БУРГЕР МЕНЮ
+    // ==========================================
+    function initMobileMenu() {
+      const burger = document.getElementById('burger');
+      const menu = document.getElementById('mobile-menu');
+
+      burger.addEventListener('click', () => {
+        menu.classList.toggle('open');
+        
+        // Меняем иконку
+        const icon = burger.querySelector('i');
+        if (menu.classList.contains('open')) {
+          icon.classList.remove('fa-bars');
+          icon.classList.add('fa-times');
+        } else {
+          icon.classList.remove('fa-times');
+          icon.classList.add('fa-bars');
+        }
+      });
+
+      // Закрываем при клике вне
+      document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target) && !burger.contains(e.target)) {
+          menu.classList.remove('open');
+          const icon = burger.querySelector('i');
+          icon.classList.remove('fa-times');
+          icon.classList.add('fa-bars');
+        }
+      });
+    }
+
+    // ==========================================
+    // СИНХРОНИЗАЦИЯ НАВ
+    // ==========================================
+    function initNavSync() {
+      // Клик по логотипу возвращает на главную
+      // (уже обработано в HTML)
+
+      // Дополнительно: при клике на любую ссылку обновляем currentPage
+      document.querySelectorAll('[data-page]').forEach(link => {
+        link.addEventListener('click', () => {
+          setTimeout(updateActiveNav, 20);
+        });
+      });
+    }
+
+    // ==========================================
+    // ИНИЦИАЛИЗАЦИЯ ВСЕГО
+    // ==========================================
+    function init() {
+      // Тема
+      initTheme();
+
+      // Фон + частицы + гексагоны
+      initBackgroundCanvas();
+
+      // Анимации героя
+      initHeroAnimations();
+
+      // Скролл-анимации
+      initScrollAnimations();
+
+      // Мобильное меню
+      initMobileMenu();
+
+      // Синхронизация навигации
+      initNavSync();
+
+      // Первичная подсветка активной вкладки
+      updateActiveNav();
+
+      // Первоначальный запуск анимаций главной страницы
+      setTimeout(() => {
+        triggerScrollAnimations('page-home');
+      }, 650);
+
+      // Небольшой приветственный эффект частиц через 2.5с
+      setTimeout(() => {
+        if (document.getElementById('page-home').classList.contains('active')) {
+          createTransitionParticles();
+        }
+      }, 2500);
+
+      // Делаем canvas интерактивным (pointer-events auto только для mouse)
+      const canvasEl = document.getElementById('bg-canvas');
+      canvasEl.style.pointerEvents = 'none'; // background, клики проходят
+
+      // Готово
+      console.log('%c[altnov] SPA инициализировано. Тёмная тема + плавные переходы + canvas эффекты.', 'color:#64748b');
+    }
+
+    // Запуск
+    document.addEventListener('DOMContentLoaded', init);
+
+    // Дополнительно: при смене размера окна пересчитываем частицы
+    window.addEventListener('resize', () => {
+      if (window.innerWidth < 600 && particles.length > 36) {
+        // на совсем узких экранах уменьшаем количество частиц
+        particles.length = 36;
+      }
+    });
+  </script>
+</body>
+</html>
